@@ -119,6 +119,65 @@
       color:#2f2f2f;
     }
 
+    .status-summary{
+      margin-top:12px;
+      display:grid;
+      gap:8px;
+    }
+
+    .summary-item{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      background:#fafafa;
+      border:1px solid #ececec;
+      border-radius:14px;
+      text-align:left;
+    }
+
+    .summary-name{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:14px;
+      font-weight:800;
+      color:#222;
+      min-width:0;
+    }
+
+    .summary-dot{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      flex:0 0 auto;
+    }
+
+    .summary-dot.open{ background:var(--green-open); }
+    .summary-dot.closed{ background:var(--red-closed); }
+
+    .summary-state{
+      flex:0 0 auto;
+      font-size:13px;
+      font-weight:850;
+      padding:6px 9px;
+      border-radius:999px;
+      border:1px solid transparent;
+    }
+
+    .summary-state.open{
+      color:var(--green-open);
+      background:var(--green-open-bg);
+      border-color:var(--green-open-border);
+    }
+
+    .summary-state.closed{
+      color:var(--red-closed);
+      background:var(--red-closed-bg);
+      border-color:var(--red-closed-border);
+    }
+
     .cards{
       display:grid;
       gap:14px;
@@ -390,6 +449,7 @@
       <h1>Öffnungszeiten</h1>
       <p class="subtitle">Mitnehmen · Innen / Gästebereich · Lieferservice</p>
       <div class="today-pill">📅 <span id="todayDate">wird geladen…</span></div>
+      <div class="status-summary" id="statusSummary" aria-label="Aktueller Status"></div>
     </header>
 
     <main class="cards" id="cards"></main>
@@ -406,7 +466,7 @@
 
   <script>
     const siteLinks = {
-      lieferkarte: "https://eiscafetizianomayen.github.io/Liefermenu/",
+      lieferkarte: "https://eiscafetizianomayen.github.io/Lieferkarte/",
       liefergebiete: "https://eiscafetizianomayen.github.io/Liefergebiete/"
     };
 
@@ -456,7 +516,7 @@
         notice: "Lieferung nach Absprache auch außerhalb der Zeiten möglich.",
         holidayHours: [{ start: "17:00", end: "20:00" }],
         links: [
-          { label: "zum Lieferservice-Menü", href: siteLinks.lieferkarte, style: "primary" },
+          { label: "Zur Lieferkarte", href: siteLinks.lieferkarte, style: "primary" },
           { label: "Zu den Liefergebieten", href: siteLinks.liefergebiete, style: "secondary" }
         ],
         hours: {
@@ -660,6 +720,33 @@
       `;
     }
 
+    function buildStatusSummary() {
+      const summaryEl = document.getElementById("statusSummary");
+      const now = new Date();
+      const today = now.getDay();
+      const holidayName = getRlpHoliday(now);
+
+      summaryEl.innerHTML = areas.map(area => {
+        const todaySlots = holidayName && area.holidayHours
+          ? area.holidayHours
+          : (area.hours[today] || []);
+
+        const open = isOpenNow(todaySlots, now);
+        const state = open ? "Geöffnet" : "Geschlossen";
+        const stateClass = open ? "open" : "closed";
+
+        return `
+          <div class="summary-item">
+            <div class="summary-name">
+              <span class="summary-dot ${stateClass}"></span>
+              <span>${area.title}</span>
+            </div>
+            <div class="summary-state ${stateClass}">${state}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
     function buildCards() {
       const cardsEl = document.getElementById("cards");
       const now = new Date();
@@ -723,6 +810,7 @@
 
     function renderAll() {
       updateTodayDate();
+      buildStatusSummary();
       buildCards();
     }
 
