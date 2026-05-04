@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Eiscafe Tiziano – Öffnungszeiten</title>
   <meta name="description" content="Öffnungszeiten von Eiscafe Tiziano: Mitnehmen, Innenbereich und Lieferservice." />
-
   <style>
     :root{
       --bg:#f3f3f3;
@@ -23,9 +22,8 @@
 
       --green-open:#1ea75c;
       --green-open-bg:#e8f7ef;
-
-      --red-closed:#d63b3b;
-      --red-closed-bg:#fdecec;
+      --closed:#8d8d8d;
+      --closed-bg:#f1f1f1;
 
       --radius-xl:22px;
       --radius-lg:18px;
@@ -194,7 +192,7 @@
       height:9px;
       border-radius:50%;
       background:currentColor;
-      opacity:.95;
+      opacity:.9;
     }
 
     .status.open{
@@ -204,9 +202,9 @@
     }
 
     .status.closed{
-      color:var(--red-closed);
-      background:var(--red-closed-bg);
-      border-color:#f3caca;
+      color:var(--closed);
+      background:var(--closed-bg);
+      border-color:#e3e3e3;
     }
 
     .today-box{
@@ -376,14 +374,12 @@
     }
   </style>
 </head>
-
 <body>
   <div class="page">
     <header class="hero">
       <div class="logo-badge">
         <img src="./logo-tiziano.png" alt="Eiscafe Tiziano Logo">
       </div>
-
       <div class="eyebrow">Eiscafe Tiziano</div>
       <h1>Öffnungszeiten</h1>
       <p class="subtitle">Mitnehmen · Innen / Gästebereich · Lieferservice</p>
@@ -395,7 +391,6 @@
     <footer class="footer">
       <strong>Eiscafe Tiziano</strong><br>
       Marktstraße 18 · 56727 Mayen
-
       <div class="footer-logo">
         <img src="./logo-tiziano.png" alt="Eiscafe Tiziano Logo klein">
       </div>
@@ -405,17 +400,17 @@
   <script>
     /*
       ==========================
-      LINKI
+      TUTAJ ZMIENIASZ LINKI
       ==========================
     */
     const siteLinks = {
-      lieferkarte: "https://eiscafetizianomayen.github.io/Lieferkarte/",
-      liefergebiete: "https://eiscafetizianomayen.github.io/Liefergebiete/"
+      lieferkarte: "./lieferkarte.html",
+      liefergebiete: "./liefergebiete.html"
     };
 
     /*
       ==========================
-      GODZINY
+      TUTAJ ZMIENIASZ GODZINY
       ==========================
       Dni:
       1 = Montag
@@ -493,13 +488,13 @@
     const dayOrder = [1, 2, 3, 4, 5, 6, 0];
 
     const dayShort = {
-      0: "So",
-      1: "Mo",
-      2: "Di",
-      3: "Mi",
-      4: "Do",
-      5: "Fr",
-      6: "Sa"
+      0: "So.",
+      1: "Mo.",
+      2: "Di.",
+      3: "Mi.",
+      4: "Do.",
+      5: "Fr.",
+      6: "Sa."
     };
 
     const dayFull = {
@@ -546,7 +541,6 @@
     function getRlpHoliday(date) {
       const year = date.getFullYear();
       const easter = getEasterSunday(year);
-
       const holidays = {
         [`${year}-01-01`]: "Neujahr",
         [dateKey(addDays(easter, -2))]: "Karfreitag",
@@ -560,7 +554,6 @@
         [`${year}-12-25`]: "1. Weihnachtstag",
         [`${year}-12-26`]: "2. Weihnachtstag"
       };
-
       return holidays[dateKey(date)] || null;
     }
 
@@ -576,9 +569,7 @@
 
     function isOpenNow(slots, now = new Date()) {
       if (!slots || slots.length === 0) return false;
-
       const current = now.getHours() * 60 + now.getMinutes();
-
       return slots.some(slot => {
         const start = minutesFromTime(slot.start);
         const end = minutesFromTime(slot.end);
@@ -591,12 +582,21 @@
       return `${dayShort[startDay]} – ${dayShort[endDay]}`;
     }
 
-    function compressHours(hours) {
+    function normalizeSlots(slots) {
+      return formatSlots(slots || []);
+    }
+
+    function compressHours(hours, holidayHours) {
       const groups = [];
       let currentGroup = null;
 
       for (const day of dayOrder) {
-        const value = formatSlots(hours[day] || []);
+        const isSunday = day === 0;
+        const sundayValue = normalizeSlots(hours[0]);
+        const holidayValue = normalizeSlots(holidayHours);
+        const value = isSunday && holidayHours && sundayValue === holidayValue
+          ? `${sundayValue}__HOLIDAY_WITH_SUNDAY__`
+          : formatSlots(hours[day] || []);
 
         if (!currentGroup) {
           currentGroup = { startDay: day, endDay: day, value };
@@ -616,16 +616,25 @@
     }
 
     function renderRows(area) {
-      const groups = compressHours(area.hours);
+      const groups = compressHours(area.hours, area.holidayHours);
+      const sundayValue = normalizeSlots(area.hours[0]);
+      const holidayValue = normalizeSlots(area.holidayHours);
+      const holidayMergedWithSunday = area.holidayHours && sundayValue === holidayValue;
 
-      const normalRows = groups.map(group => `
-        <div class="row">
-          <div class="day">${dayLabel(group.startDay, group.endDay)}</div>
-          <div class="time">${group.value}</div>
-        </div>
-      `).join("");
+      const normalRows = groups.map(group => {
+        const isHolidaySundayRow = String(group.value).includes("__HOLIDAY_WITH_SUNDAY__");
+        const cleanValue = String(group.value).replace("__HOLIDAY_WITH_SUNDAY__", "");
+        const label = isHolidaySundayRow ? "So. & Feiertag" : dayLabel(group.startDay, group.endDay);
 
-      const holidayRow = area.holidayHours ? `
+        return `
+          <div class="row">
+            <div class="day">${label}</div>
+            <div class="time">${cleanValue}</div>
+          </div>
+        `;
+      }).join("");
+
+      const holidayRow = area.holidayHours && !holidayMergedWithSunday ? `
         <div class="row">
           <div class="day">Feiertag</div>
           <div class="time">${formatSlots(area.holidayHours)}</div>
@@ -637,7 +646,6 @@
 
     function renderLinks(links) {
       if (!links || !links.length) return "";
-
       return `
         <div class="links">
           ${links.map(link => `
@@ -651,7 +659,6 @@
 
     function renderLegendIfNeeded(areaKey) {
       if (areaKey !== "liefer") return "";
-
       return `
         <div class="legend">
           <span class="legend-item"><span class="dot blue"></span>15 €</span>
@@ -666,17 +673,11 @@
       const cardsEl = document.getElementById("cards");
       const now = new Date();
       const today = now.getDay();
-      const holidayName = getRlpHoliday(now);
 
       cardsEl.innerHTML = areas.map(area => {
-        const todaySlots = holidayName && area.holidayHours
-          ? area.holidayHours
-          : (area.hours[today] || []);
-
-        const todayLabelText = holidayName
-          ? `Feiertag (${holidayName})`
-          : dayFull[today];
-
+        const holidayName = getRlpHoliday(now);
+        const todaySlots = holidayName && area.holidayHours ? area.holidayHours : (area.hours[today] || []);
+        const todayLabelText = holidayName ? `Feiertag (${holidayName})` : dayFull[today];
         const open = isOpenNow(todaySlots, now);
 
         return `
@@ -689,7 +690,6 @@
                   <p class="desc">${area.description}</p>
                 </div>
               </div>
-
               <div class="status ${open ? "open" : "closed"}">
                 ${open ? "Geöffnet" : "Geschlossen"}
               </div>
@@ -719,7 +719,6 @@
         month: "2-digit",
         year: "numeric"
       });
-
       document.getElementById("todayDate").textContent = formatter.format(new Date());
     }
 
